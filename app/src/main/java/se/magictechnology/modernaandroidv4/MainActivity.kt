@@ -11,21 +11,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import se.magictechnology.modernaandroidv4.ui.theme.Modernaandroidv4Theme
-
-@Serializable
-data class Chuckjoke(val id : String, val value : String)
-
-@Serializable
-data class Searchresult(val total : Int, val result : List<Chuckjoke>)
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,42 +46,44 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-fun doapi() {
 
-    Thread {
-        val client = OkHttpClient()
-
-        val request = Request.Builder()
-            .url("https://api.chucknorris.io/jokes/random")
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // FEL
-            }
-
-            val jsonstring = response.body!!.string()
-            Log.i("modernadebug", jsonstring)
-
-            val thejoke = Json { ignoreUnknownKeys = true }.decodeFromString<Chuckjoke>(jsonstring)
-
-            Log.i("modernadebug", thejoke.value)
-        }
-    }.start()
-}
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
+
+    val viewModel: APIViewModel = viewModel()
+
+    val fancytext by viewModel.fancytext.collectAsState()
+    val currentjoke by viewModel.currentJoke.collectAsState()
+    val errormessage by viewModel.errormessage.collectAsState()
+
+    var searchtext by remember { mutableStateOf("") }
+
     Column {
-        Text(
-            text = "Hello $name!",
-            modifier = modifier
+
+        if(errormessage != null) {
+            Text(errormessage!!, fontSize = 24.sp, modifier = Modifier.padding(10.dp))
+        }
+
+        TextField(
+            value = searchtext,
+            onValueChange = { searchtext = it },
+            label = { Text("Search") }
         )
+        Button(onClick = {
+            viewModel.searchJoke(searchtext)
+        }) {
+            Text(text = "Search")
+        }
+
+        if(currentjoke != null) {
+            Text(currentjoke!!.value)
+        }
 
         Button(onClick = {
-            doapi()
+            viewModel.loadJoke()
         }) {
-            Text(text = "DO API")
+            Text(text = "New joke!")
         }
     }
 }
